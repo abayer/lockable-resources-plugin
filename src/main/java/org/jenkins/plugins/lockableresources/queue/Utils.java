@@ -12,7 +12,11 @@ import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
+import hudson.model.ParameterValue;
+import hudson.model.ParametersAction;
 import hudson.model.Queue;
+import java.util.HashMap;
+import java.util.List;
 
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
@@ -31,17 +35,36 @@ public class Utils {
 		return null;
 	}
 
+        /**
+         * Create environment based on item parameters
+         * 
+         * @param item
+         * @return 
+         */
+	public static EnvVars getEnvVars(Queue.Item item) {
+            HashMap<String, String> params = new HashMap<>();
+            List<ParametersAction> paramsActions = item.getActions(ParametersAction.class);
+            for(ParametersAction pa: paramsActions) {
+                if(pa != null) {
+                    List<ParameterValue> paramsValues = pa.getParameters();
+                    for(ParameterValue pv: paramsValues) {
+                        if(pv != null) {
+                            params.put(pv.getName(), pv.getValue().toString());
+                        }
+                    }
+                }
+            }
+            return new EnvVars(params);
+        }
+        
 	public static LockableResourcesStruct requiredResources(
-			AbstractProject<?, ?> project) {
-		RequiredResourcesProperty property = null;
-		EnvVars env = new EnvVars();
-
+			AbstractProject<?, ?> project, EnvVars env) {
 		if (project instanceof MatrixConfiguration) {
 			env.putAll(((MatrixConfiguration) project).getCombination());
 			project = (AbstractProject<?, ?>) project.getParent();
 		}
 
-		property = project.getProperty(RequiredResourcesProperty.class);
+		RequiredResourcesProperty property = project.getProperty(RequiredResourcesProperty.class);
 		if (property != null)
 			return new LockableResourcesStruct(property, env);
 
